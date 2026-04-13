@@ -17,4 +17,5 @@ CMD sh -c "\
     ln -sf /runpod-volume/models/loras/* /comfyui/models/loras/ && \
     ln -sf /runpod-volume/models/vae/* /comfyui/models/vae/ && \
     ln -sf /runpod-volume/models/text_encoders/* /comfyui/models/text_encoders/ && \
+    python /comfyui/main.py --listen 127.0.0.1 --port 8188 & \
     python -u /handler.py"
