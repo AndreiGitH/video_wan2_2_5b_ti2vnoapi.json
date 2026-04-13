@@ -6,38 +6,45 @@ import time
 COMFY_URL = "http://127.0.0.1:8188"
 
 def wait_for_comfyui():
-    """Aguarda o ComfyUI estar pronto para receber conexões."""
-    retries = 30  # Tenta por até 60 segundos
-    for i in range(retries):
+    """Tenta conectar ao ComfyUI por até 2 minutos (tempo de carregar o Wan 2.2)"""
+    max_retries = 60
+    for i in range(max_retries):
         try:
-            requests.get(f"{COMFY_URL}/object_info")
-            print("ComfyUI está ONLINE!")
+            # Tenta acessar a API de info do ComfyUI
+            requests.get(f"{COMFY_URL}/object_info", timeout=2)
+            print("ComfyUI está ONLINE e pronto!")
             return True
-        except requests.exceptions.ConnectionError:
-            print(f"Aguardando ComfyUI... (Tentativa {i+1}/{retries})")
+        except:
+            print(f"Aguardando ComfyUI carregar modelos... ({i+1}/{max_retries})")
             time.sleep(2)
     return False
 
 def handler(job):
+    # O handler agora espera o motor ligar antes de qualquer coisa
     if not wait_for_comfyui():
-        return {"error": "ComfyUI não iniciou a tempo."}
+        return {"error": "O ComfyUI demorou demais para iniciar (Timeout)."}
 
     try:
         job_input = job['input']
         workflow = job_input.get('workflow')
 
-        # Se houver uma imagem no input, você deve salvá-la como 'example.png' aqui
-        # para satisfazer o Node 56 do seu JSON.
+        if not workflow:
+            return {"error": "Workflow não fornecido."}
 
+        # Envia o prompt de texto
         p = {"prompt": workflow}
         data = json.dumps(p).encode('utf-8')
         response = requests.post(f"{COMFY_URL}/prompt", data=data).json()
         prompt_id = response['prompt_id']
 
+        # Monitora a fila
         while True:
             history = requests.get(f"{COMFY_URL}/history/{prompt_id}").json()
             if prompt_id in history:
-                return {"status": "completed", "output": history[prompt_id]['outputs']}
+                return {
+                    "status": "completed",
+                    "output": history[prompt_id]['outputs']
+                }
             time.sleep(2)
 
     except Exception as e:
