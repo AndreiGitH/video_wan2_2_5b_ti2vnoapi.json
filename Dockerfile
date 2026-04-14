@@ -10,6 +10,7 @@ CMD sh -c "\
     if [ ! -d /workspace/models ]; then \
         echo 'AVISO: Volume não montado!'; \
     else \
+        find /workspace/models/diffusion_models -maxdepth 1 -type f 2>/dev/null | xargs -I{} ln -sf {} /comfyui/models/diffusion_models/ && \
         find /workspace/models/loras -maxdepth 1 -type f 2>/dev/null | xargs -I{} ln -sf {} /comfyui/models/loras/ && \
         find /workspace/models/vae -maxdepth 1 -type f 2>/dev/null | xargs -I{} ln -sf {} /comfyui/models/vae/ && \
         find /workspace/models/text_encoders -maxdepth 1 -type f 2>/dev/null | xargs -I{} ln -sf {} /comfyui/models/text_encoders/ && \
