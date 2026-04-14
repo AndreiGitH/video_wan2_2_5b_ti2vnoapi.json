@@ -1,22 +1,35 @@
 # clean base image
 FROM runpod/worker-comfyui:5.5.1-base
 
-# Instalando os motores e ferramentas de sistema
-RUN cd /comfyui/custom_nodes && \
-    git clone https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git && \
-    git clone https://github.com/kijai/ComfyUI-WanVideoWrapper.git && \
-    git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
-
-# Copia o recepcionista (handler) para a raiz do container
-COPY handler.py /handler.py
-
-# Comando de Inicialização Ajustado:
-# Se no Pod você usou /workspace/models/, no Serverless o caminho vira /runpod-volume/models/
 CMD sh -c "\
-    mkdir -p /comfyui/models/loras /comfyui/models/vae /comfyui/models/text_encoders && \
-    ln -sf /runpod-volume/models/loras/* /comfyui/models/loras/ && \
-    ln -sf /runpod-volume/models/vae/* /comfyui/models/vae/ && \
-    ln -sf /runpod-volume/models/text_encoders/* /comfyui/models/text_encoders/ && \
-    cd /comfyui && python main.py --listen 127.0.0.1 --port 8188 & \
-    python -u /handler.py"
-
+    echo '>>> Criando diretórios de modelos...' && \
+    mkdir -p /comfyui/models/diffusion_models \
+             /comfyui/models/loras \
+             /comfyui/models/vae \
+             /comfyui/models/text_encoders && \
+    \
+    echo '>>> Verificando volume montado...' && \
+    if [ ! -d /runpod-volume/models ]; then \
+        echo 'AVISO: /runpod-volume/models não encontrado! Continuando sem symlinks...'; \
+    else \
+        echo '>>> Criando symlinks para diffusion_models...' && \
+        find /runpod-volume/models/diffusion_models -maxdepth 1 -type f 2>/dev/null | \
+            xargs -I{} ln -sf {} /comfyui/models/diffusion_models/ && \
+        \
+        echo '>>> Criando symlinks para loras...' && \
+        find /runpod-volume/models/loras -maxdepth 1 -type f 2>/dev/null | \
+            xargs -I{} ln -sf {} /comfyui/models/loras/ && \
+        \
+        echo '>>> Criando symlinks para vae...' && \
+        find /runpod-volume/models/vae -maxdepth 1 -type f 2>/dev/null | \
+            xargs -I{} ln -sf {} /comfyui/models/vae/ && \
+        \
+        echo '>>> Criando symlinks para text_encoders...' && \
+        find /runpod-volume/models/text_encoders -maxdepth 1 -type f 2>/dev/null | \
+            xargs -I{} ln -sf {} /comfyui/models/text_encoders/ && \
+        \
+        echo '>>> Symlinks criados com sucesso!'; \
+    fi && \
+    \
+    echo '>>> Iniciando worker...' && \
+    python /start.py"
